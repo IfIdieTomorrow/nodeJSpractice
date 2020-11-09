@@ -6,7 +6,18 @@ const qs = require('querystring');
 // 페이지를 나타낼 템플릿이 들어있는 모듈
 const template = require('./lib/template.js');
 const path = require('path');
+// 오염된 값을 소독해주는 기능을 제공하는 모듈
 const sanitizeHtml = require('sanitize-html');
+// mysql과  node.js를 연동해주는 모듈
+const mysql = require("mysql");
+const db = mysql.createConnection({
+    host : "localhost",
+    user : "root",
+    password : "sqladmin",
+    database : "node_tutorial"
+});
+db.connect();
+
 
 /*
 모든 node 웹 서버 Application은 웹 서버 객체를 만들어야 하는데.

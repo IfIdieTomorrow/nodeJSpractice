@@ -7,14 +7,12 @@ const compression = require("compression");
 // post데이터를 쉽게 변환해주는 모듈 npm install body-parser --save 
 // 보안 모듈
 const helmet = require("helmet");
-// router's
 const bodyParser = require('body-parser');
-const topicRouter = require("./routes/topic");
-const indexRouter = require("./routes/index");
-const authRouter = require("./routes/auth");
-//세션
+// 세션
 const session = require("express-session");
-const FileStore = require("session-file-store")(session);
+// passport.js
+const flash = require("connect-flash");
+app.use(flash());
 
 //public폴더 안에서 static파일을 찾겠다.
 app.use(express.static('public'));
@@ -25,12 +23,18 @@ app.use(compression());
 //보안 미들웨어
 app.use(helmet());
 //세션 미들웨어
+
 app.use(session({
     secret : "sadfsdaflkjsl@#21",
     resave : false,
     saveUninitialized : true,
-    store : new FileStore()
-}))
+    cookie : {
+        secure : false
+    }
+}));
+//---------------------------------------------------------------------------------------------------------------------
+const passport = require("./lib/passport")(app);
+//--------------------------------------------------------------------------------------------------------------
 
 // 파일 목록을 띄워주는 직접 작성한 미들웨어, get방식으로 요청하는 모든 요청에대해서만
 // 파일 목록을 제공해주겠다.
@@ -41,6 +45,11 @@ app.get('*',(request, response, next)=>{
         next();
     });
 });
+
+// router's
+const topicRouter = require("./routes/topic");
+const indexRouter = require("./routes/index");
+const authRouter = require("./routes/auth")(passport);
 
 // 라우터
 app.use("/", indexRouter);

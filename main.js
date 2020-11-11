@@ -6,6 +6,27 @@ const qs = require('querystring');
 const template = require('./lib/template.js');
 const path = require('path');
 const sanitizeHtml = require('sanitize-html');
+const cookie = require("cookie");
+
+function authIsOwner(request, response){
+    let isOwner = false;
+    let cookies = {};
+    if(request.headers.cookie !== undefined){
+        cookies = cookie.parse(request.headers.cookie);
+    }
+    if(cookies.email === "abcd" && cookies.password === "aaaa"){
+        isOwner = true;
+    }
+    return isOwner;
+}
+
+function authStatusUI(request, response){
+    let authStatusUI = "<a href='/login'>login</a>";
+    if(authIsOwner(request, response)){
+        authStatusUI = "<a href='/logout'>logout</a>";
+    }
+    return authStatusUI;
+}
 
 /*
 모든 node 웹 서버 Application은 웹 서버 객체를 만들어야 하는데.
@@ -18,7 +39,7 @@ const app = http.createServer( (request, response) => {
     let queryData = url.parse(_url, true).query;
     // 경로
     let pathName = url.parse(_url, true).pathname;
- 
+    
     // 홈페이지로 들어온 경우
     if(pathName === "/"){
         // 글의  id값을 찾을 수 없는경우 홈페이지를 보여준다.
@@ -31,7 +52,8 @@ const app = http.createServer( (request, response) => {
                 let list = template.list(result);
                 let html = template.htmL(title, list, 
                     `<h2>${title}</h2><p>${description}</p>`,
-                    `<a href="/create">create</a>`);
+                    `<a href="/create">create</a>`,
+                    authStatusUI(request,response));
                 // response.writeHead()메서드는 인자값로 http 상태코드를 전달하여야 하고.
                 // response.end()메서드는 인자값으로 웹에 표현할 값을 전달한다.
                 response.writeHead(200);
@@ -59,13 +81,17 @@ const app = http.createServer( (request, response) => {
                             <input type="hidden" name="id" value="${sanitizedTitle}">
                             <input type="submit" value="delete" style='border : none; background : #fff;'>
                         </form>
-                        `);
+                        `,authStatusUI(request,response));
                     response.writeHead(200);
                     response.end(html);
                 });
             });
         }
     } else if(pathName === "/create"){
+        if(authIsOwner(request, response)===false){
+            response.end("Login required!!");
+            return false;
+        }
         //글 작성화면
         fs.readdir("./data/",(err, result)=>{
             let title = "WEB - CREATE";
@@ -80,7 +106,7 @@ const app = http.createServer( (request, response) => {
                         <input type="submit">
                     </p>
                 </form
-            `,"");
+            `,"",authStatusUI(request,response));
             // response.writeHead()메서드는 인자값로 http 상태코드를 전달하여야 하고.
             // response.end()메서드는 인자값으로 웹에 표현할 값을 전달한다.
             response.writeHead(200);
@@ -89,6 +115,10 @@ const app = http.createServer( (request, response) => {
     } else if(pathName === "/create_process"){
         //POST방식으로 전달된 데이터를 받아서 새로운 파일을 생성하고 내용을 추가하는 방법.
         //POST방식으로 전송된 데이터를 가져오는 방법
+        if(authIsOwner(request, response)===false){
+            response.end("Login required!!");
+            return false;
+        }
         let body = "";
         request.on('data', (data) =>{
             body += data;
@@ -108,6 +138,10 @@ const app = http.createServer( (request, response) => {
             });
         });
     } else if(pathName === "/update"){
+        if(authIsOwner(request, response)===false){
+            response.end("Login required!!");
+            return false;
+        }
         //글 수정 화면
         fs.readdir("./data/",(err, result)=>{
             let filteredId = path.parse(queryData.id).base;
@@ -128,12 +162,17 @@ const app = http.createServer( (request, response) => {
                         </p>
                     </form
                     `,
-                    `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`);
+                    `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`,
+                    authStatusUI(request,response));
                 response.writeHead(200);
                 response.end(html);
             });
         });
     } else if(pathName === "/update_process"){
+        if(authIsOwner(request, response)===false){
+            response.end("Login required!!");
+            return false;
+        }
         //POST로 전달된 데이터를 받아서 파일 이름과 내용을 수정
         let body = "";
         request.on("data", (data) => {
@@ -156,6 +195,10 @@ const app = http.createServer( (request, response) => {
             });
         });
     } else if(pathName === "/delete_process"){
+        if(authIsOwner(request, response)===false){
+            response.end("Login required!!");
+            return false;
+        }
         //글 삭제 로직
         let body = "";
         request.on("data", (data)=>{
@@ -172,6 +215,64 @@ const app = http.createServer( (request, response) => {
                 response.end();
             });
         });
+    } else if(pathName === "/login"){
+        fs.readdir("./data/",(err, result)=>{
+            let title = "Login";
+            let list = template.list(result);
+            let html = template.htmL(title, list, 
+                `
+                <form action="/login_process" method="post">
+                    <p><input type="text" name="email" placeholder="email"></p>
+                    <p><input type="password" name="password" placeholder="password"></p>
+                    <p><input type="submit"></p>
+                </form
+                `,
+                `<a href="/create">create</a>`);
+            // response.writeHead()메서드는 인자값로 http 상태코드를 전달하여야 하고.
+            // response.end()메서드는 인자값으로 웹에 표현할 값을 전달한다.
+            response.writeHead(200);
+            response.end(html);
+        });
+    } else if(pathName === "/login_process"){
+        //POST로 전달된 데이터를 받아서 파일 이름과 내용을 수정
+        let body = "";
+        request.on("data", (data) => {
+            body += data;
+        });
+        request.on("end", () => {
+            let post = qs.parse(body);
+            if(post.email === 'abcd' && post.password === "aaaa"){
+                response.writeHead(302, {
+                    'Set-Cookie' : [
+                        `email=${post.email}`,
+                        `password=${post.password}`,
+                        `nickname=egoing`
+                    ],
+                    Location : "/" 
+                });
+                response.end();
+            } else {
+                response.end("Who?");
+            }
+        });  
+    }else if(pathName === "/logout"){
+        //POST로 전달된 데이터를 받아서 파일 이름과 내용을 수정
+        let body = "";
+        request.on("data", (data) => {
+            body += data;
+        });
+        request.on("end", () => {
+            let post = qs.parse(body);
+            response.writeHead(302, {
+                'Set-Cookie' : [
+                    'email=; Max-Age=0',
+                    'password=; Max-Age=0',
+                    'nickname=; Max-Age=0',
+                ],
+                Location : "/"
+            });
+            response.end();
+        });  
     } else {
         //아무 링크도 찾지 못한 경우.
         response.writeHead(404);

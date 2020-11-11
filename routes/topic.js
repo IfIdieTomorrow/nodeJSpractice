@@ -7,10 +7,15 @@ const sanitizeHtml = require("sanitize-html");
 const template = require('../lib/template');
 const url = require("url");
 const bodyParser = require("body-parser");
+const auth = require("../lib/auth");
 
 router.use(bodyParser.urlencoded({extended:false}));
 
 router.get("/create", (request, response)=>{
+    if(!auth.isOwner(request, response)){
+        response.redirect("/");
+        return false;
+    }
     let title = "WEB - CREATE";
     let list = template.list(request.list);
     let html = template.htmL(title, list, `
@@ -23,12 +28,16 @@ router.get("/create", (request, response)=>{
                 <input type="submit">
             </p>
         </form
-    `,"");
+    `,"",auth.statusUI(request, response));
     response.send(html);
 });
 
 // 글 추가하기
 router.post("/create", (request, response)=>{
+    if(!auth.isOwner(request, response)){
+        response.redirect("/");
+        return false;
+    }
     let title = request.body.title;
     let description = request.body.description;
     fs.writeFile(`data/${title}`,description, (err)=>{
@@ -43,6 +52,10 @@ router.post("/create", (request, response)=>{
 
 // 글 수정 화면
 router.get("/update/:pageId", (request, response)=>{
+    if(!auth.isOwner(request, response)){
+        response.redirect("/");
+        return false;
+    }
     let filteredId = path.parse(request.params.pageId).base;
     fs.readFile(`./data/${filteredId}`, 'utf-8', (err, description)=>{
         if(err) throw err;
@@ -63,13 +76,17 @@ router.get("/update/:pageId", (request, response)=>{
                 </p>
             </form`,
             `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>
-            `);
+            `,auth.statusUI(request, response));
         response.send(html);
     });
 });
 
 // 글 수정하기
 router.post("/update", (request, response)=>{
+    if(!auth.isOwner(request, response)){
+        response.redirect("/");
+        return false;
+    }
     const id = request.body.id;
     const title = request.body.title;
     const description = request.body.description;
@@ -88,6 +105,10 @@ router.post("/update", (request, response)=>{
 
 // 글 삭제
 router.post("/delete", (request, response)=>{
+    if(!auth.isOwner(request, response)){
+        response.redirect("/");
+        return false;
+    }
     const id = request.body.id;
     fs.unlink(`data/${id}`, (err)=>{
         if(err) throw err;
@@ -124,7 +145,7 @@ router.get("/:pageId", (request, response, next)=>{
                     <input type="hidden" name="id" value="${sanitizedTitle}">
                     <input type="submit" value="delete" style='border : none; background : #fff;'>
                 </form>
-            `);
+            `,auth.statusUI(request, response));
             response.send(html);
         } 
     });

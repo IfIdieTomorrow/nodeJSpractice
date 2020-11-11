@@ -2,21 +2,36 @@ const express = require('express')
 const app = express()
 const port = 8090
 const fs = require("fs");
-// 압축
+// 압축 모듈 npm install compression --save
 const compression = require("compression");
-//npm install body-parser --save 한 후 의존성을 추가하고,
+// post데이터를 쉽게 변환해주는 모듈 npm install body-parser --save 
+// 보안 모듈
+const helmet = require("helmet");
+// router's
 const bodyParser = require('body-parser');
 const topicRouter = require("./routes/topic");
 const indexRouter = require("./routes/index");
-const helmet = require("helmet");
+const authRouter = require("./routes/auth");
+//세션
+const session = require("express-session");
+const FileStore = require("session-file-store")(session);
 
-//보안 미들웨어
-app.use(helmet());
 //public폴더 안에서 static파일을 찾겠다.
 app.use(express.static('public'));
+//post데이터
 app.use(bodyParser.urlencoded({extended : false}));
-//npm install compresion --save
+//업츅 미들웨어
 app.use(compression());
+//보안 미들웨어
+app.use(helmet());
+//세션 미들웨어
+app.use(session({
+    secret : "sadfsdaflkjsl@#21",
+    resave : false,
+    saveUninitialized : true,
+    store : new FileStore()
+}))
+
 // 파일 목록을 띄워주는 직접 작성한 미들웨어, get방식으로 요청하는 모든 요청에대해서만
 // 파일 목록을 제공해주겠다.
 app.get('*',(request, response, next)=>{
@@ -27,14 +42,12 @@ app.get('*',(request, response, next)=>{
     });
 });
 
-
+// 라우터
 app.use("/", indexRouter);
-
 // /topic으로 시작하는 주소에 topicRouter라는 미들웨어를 적용하겠다.
 // topicRouter 모듈에 담겨있는 주소에 /topic을 추가해준다.
 app.use('/topic', topicRouter);
-
-
+app.use('/auth',authRouter);
 
 app.use((request, response, next)=>{
     response.status(404).send('Sorry cant find that!');

@@ -98,6 +98,7 @@ module.exports = function(passport){
                 displayName : displayName
             }
             db.get('users').push(user).write();
+            //passport를 사용하여 회원가입과 동시에 로그인
             request.login(user, (err)=>{
                 return response.redirect("/")
             });
